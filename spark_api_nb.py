@@ -1,41 +1,28 @@
 # Databricks notebook source
 import pyspark.sql.functions as F
 
-# Set up pathing
-source_path = '/tmp/dlt/source_data'
+# COMMAND ----------
 
-bz_write_path = '/tmp/dlt/population_data_bz'
-bz_checkpoint_path = '/tmp/dlt/population_data_bz/_checkpoints'
+df = (spark.readStream.format('cloudFiles')
+  .option('cloudFiles.format', 'csv')
+  .option('header', 'true')
+  .schema('city string, year int, population long')
+  .load('/tmp/dlt/source_data'))
 
 # COMMAND ----------
 
-def extract_data():
-  return (spark.readStream.format('cloudFiles')
-    .option('cloudFiles.format', 'csv')
-    .option('header', 'true')
-    .schema('city string, year int, population long')
-    .load(source_path))
-
-# COMMAND ----------
-
-(extract_data().writeStream.format('delta')
-  .option('checkpointLocation', bz_checkpoint_path)
+(df.writeStream.format('delta')
+  .option('checkpointLocation', '/tmp/dlt/population_data_bz/_checkpoints')
   .trigger(once=True)
-  .start(bz_write_path))
+  .table("riley_test.population_data"))
 
 # COMMAND ----------
 
-sv_write_path = '/tmp/dlt/population_data_sv'
-sv_checkpoint_path = '/tmp/dlt/population_data_sv/sv_checkpoints'
+sv_df = (spark.table("riley_test.population_data")
+  .groupby('year')
+  .agg(F.sum('population').alias("total_population")))
+
 
 # COMMAND ----------
 
-def transfrom_data():
-  return (spark.read.format('delta')
-    .load(bz_write_path)
-    .groupby('year')
-    .agg(F.sum('population').alias("total_population")))
-
-# COMMAND ----------
-
-transfrom_data().write.format('delta').mode("overwrite").save(sv_write_path)
+sv_df.write.format('delta').mode("overwrite").saveAsTable('population_agg')
