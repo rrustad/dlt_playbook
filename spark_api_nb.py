@@ -3,7 +3,8 @@ import pyspark.sql.functions as F
 
 # COMMAND ----------
 
-df = (spark.readStream.format('cloudFiles')
+def population_data():
+  return (spark.readStream.format('cloudFiles')
   .option('cloudFiles.format', 'csv')
   .option('header', 'true')
   .schema('city string, year int, population long')
@@ -11,18 +12,23 @@ df = (spark.readStream.format('cloudFiles')
 
 # COMMAND ----------
 
-(df.writeStream.format('delta')
+(population_data().writeStream.format('delta')
   .option('checkpointLocation', '/tmp/dlt/population_data_bz/_checkpoints')
   .trigger(once=True)
   .table("riley_test.population_data"))
 
 # COMMAND ----------
 
-sv_df = (spark.table("riley_test.population_data")
+def population_agg():
+  return(spark.table("riley_test.population_data")
   .groupby('year')
   .agg(F.sum('population').alias("total_population")))
 
 
 # COMMAND ----------
 
-sv_df.write.format('delta').mode("overwrite").saveAsTable('population_agg')
+population_agg().write.format('delta').mode("overwrite").saveAsTable('population_agg')
+
+# COMMAND ----------
+
+
