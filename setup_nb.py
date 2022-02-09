@@ -239,28 +239,34 @@ print("Num of tables: ", client.get_num_tables())
 
 # COMMAND ----------
 
-# Set up pathing
-checkpoint_path = '/tmp/delta/population_data/_checkpoints'
-write_path = '/tmp/delta/population_data'
+import dlt
 
-# Set up autoloader to stream latest files from source
-df = spark.readStream.format('cloudFiles') \
-  .option('cloudFiles.format', 'csv') \
-  .option('header', 'true') \
-  .schema('city string, year int, population long') \
-  .load(upload_path) \
+# # Set up pathing
+# checkpoint_path = '/tmp/delta/population_data/_checkpoints'
+# write_path = '/tmp/delta/population_data'
 
-# Some sort of Transformation
-filtered_df = df \
-  .filter('city' == "Portland") \
-  .groupby('year')
-  .agg(F.sum('population'))
+@dlt.table()
+def population_data()
+  # Set up autoloader to stream latest files from source
+  df = spark.readStream.format('cloudFiles') \
+    .option('cloudFiles.format', 'csv') \
+    .option('header', 'true') \
+    .schema('city string, year int, population long') \
+    .load(upload_path) \
 
-# Start the stream.
-filtered_df.writeStream.format('delta') \
-  # Set up checkpoint location to track which files have already been processed
-  .option('checkpointLocation', checkpoint_path) \
-  # Only run until all latest files have been processsed
-  .trigger(once=True)
-  # Specify output path
-  .start(write_path)
+  # Some sort of Transformation
+  filtered_df = df \
+    .filter('city' == "Portland") \
+    .groupby('year')
+    .agg(F.sum('population'))
+  
+  return filtered_df
+
+# # Start the stream.
+# filtered_df.writeStream.format('delta') \
+#   # Set up checkpoint location to track which files have already been processed
+#   .option('checkpointLocation', checkpoint_path) \
+#   # Only run until all latest files have been processsed
+#   .trigger(once=True)
+#   # Specify output path
+#   .start(write_path)
