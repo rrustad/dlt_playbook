@@ -16,3 +16,6 @@
 # MAGIC Portland metro,2019,2127000
 # MAGIC Portland metro,2020,2151000
 # MAGIC """ > /dbfs/tmp/dlt/source_data/data2.csv
+
+# COMMAND ----------
+print('hello')
